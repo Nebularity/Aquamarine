@@ -1,0 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: TinxLD <Ib0ekNtyFT93pp0Vi1ul>
+Date: Tue, 4 Apr 2023 22:28:55 +0200
+Subject: [PATCH] TEST123
+
+
+diff --git a/src/main/java/org/bukkit/craftbukkit/help/HelpYamlReader.java b/src/main/java/org/bukkit/craftbukkit/help/HelpYamlReader.java
+index e79a451b0a76568a8bbdd85ef627f9188cca6742..bfd0199b4474dd63d068a2fed02131be49c608d2 100644
+--- a/src/main/java/org/bukkit/craftbukkit/help/HelpYamlReader.java
++++ b/src/main/java/org/bukkit/craftbukkit/help/HelpYamlReader.java
+@@ -25,7 +25,7 @@ public class HelpYamlReader {
+     public HelpYamlReader(Server server) {
+         this.server = server;
+ 
+-        File helpYamlFile = new File("config/help.yml");
++        File helpYamlFile = new File("config/help/help.yml");
+         YamlConfiguration defaultConfig = YamlConfiguration.loadConfiguration(new InputStreamReader(getClass().getClassLoader().getResourceAsStream("configurations/help.yml"), Charsets.UTF_8));
+ 
+         try {
