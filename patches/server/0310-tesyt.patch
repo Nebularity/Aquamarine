@@ -1,0 +1,189 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: TinxLD <Ib0ekNtyFT93pp0Vi1ul>
+Date: Tue, 4 Apr 2023 21:02:07 +0200
+Subject: [PATCH] tesyt
+
+
+diff --git a/src/main/java/net/minecraft/server/Main.java b/src/main/java/net/minecraft/server/Main.java
+index c6fa6bcd66d61359124a8426b919493c6ec43f06..cfa4ff5288931f7ba954743b47e5c4fc4fed3b03 100644
+--- a/src/main/java/net/minecraft/server/Main.java
++++ b/src/main/java/net/minecraft/server/Main.java
+@@ -8,9 +8,7 @@ import com.mojang.logging.LogUtils;
+ import com.mojang.serialization.DynamicOps;
+ import com.mojang.serialization.Lifecycle;
+ import java.awt.GraphicsEnvironment;
+-import java.io.File;
+-import java.io.IOException;
+-import java.io.UncheckedIOException;
++import java.io.*;
+ import java.net.Proxy;
+ import java.nio.file.Files;
+ import java.nio.file.Path;
+@@ -67,12 +65,16 @@ import org.slf4j.Logger;
+ 
+ // CraftBukkit start
+ import com.google.common.base.Charsets;
+-import java.io.InputStreamReader;
++
+ import java.util.concurrent.atomic.AtomicReference;
+ import net.minecraft.SharedConstants;
+ import org.bukkit.configuration.file.YamlConfiguration;
+ // CraftBukkit end
+ 
++//Aquamarine start
++import tinx.aquamarine.AquamarineUtils;
++//Aquamarine end
++
+ public class Main {
+ 
+     private static final Logger LOGGER = LogUtils.getLogger();
+@@ -127,11 +129,18 @@ public class Main {
+             Bootstrap.bootStrap();
+             Bootstrap.validate();
+             Util.startTimerHackThread();
+-            Path path1 = Paths.get("server.properties");
++            Path path1 = Paths.get("config/server.properties");
+             DedicatedServerSettings dedicatedserversettings = new DedicatedServerSettings(optionset); // CraftBukkit - CLI argument support
+ 
+             dedicatedserversettings.forceSave();
+             Path path2 = Paths.get("eula.txt");
++
++            //Aquamarine start
++            FileWriter w = new FileWriter("eula.txt");
++            w.write(AquamarineUtils.EULA_TEXT);
++            w.close();
++            //Aquamarine end
++
+             Eula eula = new Eula(path2);
+             // Paper start - load config files for access below if needed
+             org.bukkit.configuration.file.YamlConfiguration bukkitConfiguration = io.papermc.paper.configuration.PaperConfigurations.loadLegacyConfigFile((File) optionset.valueOf("bukkit-settings"));
+diff --git a/src/main/java/net/minecraft/server/Services.java b/src/main/java/net/minecraft/server/Services.java
+index ef6ff78af2ae747e939895b82ee9d11c75012dcd..6fb00f4f7c9b3886bca6b4bbf12dfcfa1fe72f53 100644
+--- a/src/main/java/net/minecraft/server/Services.java
++++ b/src/main/java/net/minecraft/server/Services.java
+@@ -19,7 +19,7 @@ public record Services(MinecraftSessionService sessionService, SignatureValidato
+         return java.util.Objects.requireNonNull(this.paperConfigurations);
+     }
+     // Paper end
+-    public static final String USERID_CACHE_FILE = "usercache.json"; // Paper - private -> public
++    public static final String USERID_CACHE_FILE = "usercache.json"; // Paper - private -> public //Aquamarine to config cache
+ 
+     public static Services create(YggdrasilAuthenticationService authenticationService, File rootDirectory, File userCacheFile, joptsimple.OptionSet optionSet) throws Exception { // Paper
+         MinecraftSessionService minecraftSessionService = authenticationService.createMinecraftSessionService();
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftServer.java b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+index 5ace171b786e5b5a9a33b51e9b93e6d71159c29b..4f97077ae3db23a72449c423a37f81096e430d88 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftServer.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+@@ -256,7 +256,7 @@ import javax.annotation.Nullable; // Paper
+ import javax.annotation.Nonnull; // Paper
+ 
+ public final class CraftServer implements Server {
+-    private final String serverName = "Purpur"; // Paper // Pufferfish // Purpur
++    private final String serverName = "Aquamarine"; // Paper // Pufferfish // Purpur //Aquamarine
+     private final String serverVersion;
+     private final String bukkitVersion = Versioning.getBukkitVersion();
+     private final Logger logger = Logger.getLogger("Minecraft");
+diff --git a/src/main/java/org/bukkit/craftbukkit/Main.java b/src/main/java/org/bukkit/craftbukkit/Main.java
+index ab05f4151e6ec7404a85ddb3a141ed39d9ed86d7..b4d0049a3f3f778e4de5ed5acb2461c7f32ebc16 100644
+--- a/src/main/java/org/bukkit/craftbukkit/Main.java
++++ b/src/main/java/org/bukkit/craftbukkit/Main.java
+@@ -123,13 +123,13 @@ public class Main {
+                 acceptsAll(Main.asList("b", "bukkit-settings"), "File for bukkit settings")
+                         .withRequiredArg()
+                         .ofType(File.class)
+-                        .defaultsTo(new File("bukkit.yml"))
++                        .defaultsTo(new File("config/bukkit.yml"))
+                         .describedAs("Yml file");
+ 
+                 acceptsAll(Main.asList("C", "commands-settings"), "File for command settings")
+                         .withRequiredArg()
+                         .ofType(File.class)
+-                        .defaultsTo(new File("commands.yml"))
++                        .defaultsTo(new File("config/commands.yml"))
+                         .describedAs("Yml file");
+ 
+                 acceptsAll(Main.asList("forceUpgrade"), "Whether to force a world upgrade");
+@@ -150,7 +150,7 @@ public class Main {
+                 acceptsAll(Main.asList("S", "spigot-settings"), "File for spigot settings")
+                         .withRequiredArg()
+                         .ofType(File.class)
+-                        .defaultsTo(new File("spigot.yml"))
++                        .defaultsTo(new File("config/spigot.yml"))
+                         .describedAs("Yml file");
+                 // Spigot End
+ 
+@@ -160,7 +160,7 @@ public class Main {
+                     .ofType(File.class)
+                     .defaultsTo(new File(io.papermc.paper.configuration.PaperConfigurations.CONFIG_DIR))
+                     .describedAs("Config directory");
+-                acceptsAll(asList("paper", "paper-settings"), "File for Paper settings")
++                acceptsAll(asList("paper", "paper-settings"), "File for Paper settings")//Not Used idk
+                         .withRequiredArg()
+                         .ofType(File.class)
+                         .defaultsTo(new File("paper.yml"))
+@@ -177,13 +177,13 @@ public class Main {
+                 acceptsAll(asList("purpur", "purpur-settings"), "File for purpur settings")
+                     .withRequiredArg()
+                     .ofType(File.class)
+-                    .defaultsTo(new File("purpur.yml"))
++                    .defaultsTo(new File("config/purpur.yml"))
+                     .describedAs("Yml file");
+ 
+                 acceptsAll(asList("pufferfish", "pufferfish-settings"), "File for pufferfish settings")
+                         .withRequiredArg()
+                         .ofType(File.class)
+-                        .defaultsTo(new File("pufferfish.yml"))
++                        .defaultsTo(new File("config/pufferfish.yml"))
+                         .describedAs("Yml file");
+                 // Purpur end
+ 
+@@ -191,7 +191,7 @@ public class Main {
+                 acceptsAll(asList("server-name"), "Name of the server")
+                         .withRequiredArg()
+                         .ofType(String.class)
+-                        .defaultsTo("Unknown Server")
++                        .defaultsTo("Aquamarine Server")
+                         .describedAs("Name");
+                 // Paper end
+             }
+diff --git a/src/main/java/org/bukkit/craftbukkit/help/HelpYamlReader.java b/src/main/java/org/bukkit/craftbukkit/help/HelpYamlReader.java
+index 74b49f4c1649c161c3c785be7708f5970989f7f3..eb6f65feaef1a76842c1f4da5b701a1c4ed92ca1 100644
+--- a/src/main/java/org/bukkit/craftbukkit/help/HelpYamlReader.java
++++ b/src/main/java/org/bukkit/craftbukkit/help/HelpYamlReader.java
+@@ -25,7 +25,7 @@ public class HelpYamlReader {
+     public HelpYamlReader(Server server) {
+         this.server = server;
+ 
+-        File helpYamlFile = new File("help.yml");
++        File helpYamlFile = new File("config/useless/help.yml");
+         YamlConfiguration defaultConfig = YamlConfiguration.loadConfiguration(new InputStreamReader(getClass().getClassLoader().getResourceAsStream("configurations/help.yml"), Charsets.UTF_8));
+ 
+         try {
+diff --git a/src/main/java/tinx/aquamarine/AquamarineUtils.java b/src/main/java/tinx/aquamarine/AquamarineUtils.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..65f2db71345b8321190cded22595e0f5e5c8bb2d
+--- /dev/null
++++ b/src/main/java/tinx/aquamarine/AquamarineUtils.java
+@@ -0,0 +1,9 @@
++package tinx.aquamarine;
++
++public class AquamarineUtils {
++    public static final String EULA_TEXT =  "#This EULA has been modified by Aquamarine to be true\n" +
++                                            "eula=true";
++
++    public void test(){
++    }
++}
+diff --git a/src/main/resources/configurations/bukkit.yml b/src/main/resources/configurations/bukkit.yml
+index eef7c125b2689f29cae5464659eacdf33f5695b2..0cb1fd40e22ca9ec57d7efd97c7b94f71ad69359 100644
+--- a/src/main/resources/configurations/bukkit.yml
++++ b/src/main/resources/configurations/bukkit.yml
+@@ -14,7 +14,7 @@
+ settings:
+     allow-end: true
+     warn-on-overload: true
+-    permissions-file: permissions.yml
++    permissions-file: config/permissions.yml
+     update-folder: update
+     plugin-profiling: false
+     connection-throttle: 4000
