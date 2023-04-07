@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: TinxLD <Ib0ekNtyFT93pp0Vi1ul>
 Date: Tue, 4 Apr 2023 21:02:07 +0200
-Subject: [PATCH] tesyt
+Subject: [PATCH] patch1
 
 
 diff --git a/src/main/java/net/minecraft/server/Main.java b/src/main/java/net/minecraft/server/Main.java
@@ -155,7 +155,7 @@ index 74b49f4c1649c161c3c785be7708f5970989f7f3..eb6f65feaef1a76842c1f4da5b701a1c
          this.server = server;
  
 -        File helpYamlFile = new File("help.yml");
-+        File helpYamlFile = new File("config/useless/help.yml");
++        File helpYamlFile = new File("config/help.yml");
          YamlConfiguration defaultConfig = YamlConfiguration.loadConfiguration(new InputStreamReader(getClass().getClassLoader().getResourceAsStream("configurations/help.yml"), Charsets.UTF_8));
  
          try {
