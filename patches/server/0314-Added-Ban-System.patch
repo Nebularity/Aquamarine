@@ -1,0 +1,196 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: TinxLD <Ib0ekNtyFT93pp0Vi1ul>
+Date: Fri, 7 Apr 2023 11:20:41 +0200
+Subject: [PATCH] Added Ban System
+
+
+diff --git a/src/main/java/net/minecraft/server/commands/BanIpCommands.java b/src/main/java/net/minecraft/server/commands/BanIpCommands.java
+index bac6c3140438aaf5626724f9a5558325e244f66d..eeedc71f45ff21b836a02e78023d7656c429f17c 100644
+--- a/src/main/java/net/minecraft/server/commands/BanIpCommands.java
++++ b/src/main/java/net/minecraft/server/commands/BanIpCommands.java
+@@ -16,6 +16,7 @@ import net.minecraft.network.chat.Component;
+ import net.minecraft.server.level.ServerPlayer;
+ import net.minecraft.server.players.IpBanList;
+ import net.minecraft.server.players.IpBanListEntry;
++import tinx.aquamarine.commands.BanIDCommand;
+ 
+ public class BanIpCommands {
+     private static final SimpleCommandExceptionType ERROR_INVALID_IP = new SimpleCommandExceptionType(Component.translatable("commands.banip.invalid"));
+diff --git a/src/main/java/net/minecraft/server/commands/BanPlayerCommands.java b/src/main/java/net/minecraft/server/commands/BanPlayerCommands.java
+index 458b9a730a1f629bd605c26a4ec4440e8ee84b1d..80e5c0fc0afa6e679b9b594b7aa973dc8390a326 100644
+--- a/src/main/java/net/minecraft/server/commands/BanPlayerCommands.java
++++ b/src/main/java/net/minecraft/server/commands/BanPlayerCommands.java
+@@ -2,20 +2,34 @@ package net.minecraft.server.commands;
+ 
+ import com.mojang.authlib.GameProfile;
+ import com.mojang.brigadier.CommandDispatcher;
++import com.mojang.brigadier.arguments.IntegerArgumentType;
++import com.mojang.brigadier.arguments.StringArgumentType;
+ import com.mojang.brigadier.exceptions.CommandSyntaxException;
+ import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
++
++import java.sql.Time;
++import java.time.LocalTime;
++import java.time.Month;
++import java.time.MonthDay;
++import java.time.Year;
++import java.util.Calendar;
+ import java.util.Collection;
+ import java.util.Date;
+ import javax.annotation.Nullable;
++
++import com.sun.jdi.connect.Connector;
+ import net.minecraft.commands.CommandSourceStack;
+ import net.minecraft.commands.Commands;
+ import net.minecraft.commands.arguments.GameProfileArgument;
+ import net.minecraft.commands.arguments.MessageArgument;
++import net.minecraft.commands.arguments.TimeArgument;
+ import net.minecraft.network.chat.Component;
+ import net.minecraft.network.chat.ComponentUtils;
+ import net.minecraft.server.level.ServerPlayer;
+ import net.minecraft.server.players.UserBanList;
+ import net.minecraft.server.players.UserBanListEntry;
++import tinx.aquamarine.AquamarineBanID;
++import tinx.aquamarine.AquamarineUtils;
+ 
+ public class BanPlayerCommands {
+     private static final SimpleCommandExceptionType ERROR_ALREADY_BANNED = new SimpleCommandExceptionType(Component.translatable("commands.ban.failed"));
+@@ -24,19 +38,31 @@ public class BanPlayerCommands {
+         dispatcher.register(Commands.literal("ban").requires((source) -> {
+             return source.hasPermission(3);
+         }).then(Commands.argument("targets", GameProfileArgument.gameProfile()).executes((context) -> {
+-            return banPlayers(context.getSource(), GameProfileArgument.getGameProfiles(context, "targets"), (Component)null);
++            return banPlayers(context.getSource(), GameProfileArgument.getGameProfiles(context, "targets"), 1, "Banned by an operator.");
++        }).then(Commands.argument("banID", IntegerArgumentType.integer()).executes((context) -> {
++            return banPlayers(context.getSource(), GameProfileArgument.getGameProfiles(context, "targets"), IntegerArgumentType.getInteger(context, "banID"), "Banned by an operator.");
+         }).then(Commands.argument("reason", MessageArgument.message()).executes((context) -> {
+-            return banPlayers(context.getSource(), GameProfileArgument.getGameProfiles(context, "targets"), MessageArgument.getMessage(context, "reason"));
+-        }))));
++            return banPlayers(context.getSource(), GameProfileArgument.getGameProfiles(context, "targets"), IntegerArgumentType.getInteger(context, "banID"), MessageArgument.getMessage(context, "reason").getString());
++        })))));
+     }
+ 
+-    private static int banPlayers(CommandSourceStack source, Collection<GameProfile> targets, @Nullable Component reason) throws CommandSyntaxException {
++    private static int banPlayers(CommandSourceStack source, Collection<GameProfile> targets, int banID, String reason) throws CommandSyntaxException {
+         UserBanList userBanList = source.getServer().getPlayerList().getBans();
+         int i = 0;
+ 
+         for(GameProfile gameProfile : targets) {
+             if (!userBanList.isBanned(gameProfile)) {
+-                UserBanListEntry userBanListEntry = new UserBanListEntry(gameProfile, (Date)null, source.getTextName(), (Date)null, reason == null ? null : reason.getString());
++
++                AquamarineBanID aquamarineBanID = AquamarineUtils.getBanID(banID);
++
++                Date currentDate = new Date(Year.now().getValue() + aquamarineBanID.years - 1900, //1900 Default Year in Java
++                        MonthDay.now().getMonthValue() + aquamarineBanID.months - 1,
++                        MonthDay.now().getDayOfMonth() +  aquamarineBanID.days,
++                        LocalTime.now().getHour() + aquamarineBanID.hours,
++                        LocalTime.now().getMinute() + aquamarineBanID.minutes,
++                        LocalTime.now().getSecond() + aquamarineBanID.seconds);
++
++                UserBanListEntry userBanListEntry = new UserBanListEntry(gameProfile, new Date(), source.getTextName(), currentDate, aquamarineBanID.reason + "\n" + reason);
+                 userBanList.add(userBanListEntry);
+                 ++i;
+                 source.sendSuccess(Component.translatable("commands.ban.success", ComponentUtils.getDisplayName(gameProfile), userBanListEntry.getReason()), true);
+diff --git a/src/main/java/org/purpurmc/purpur/PurpurConfig.java b/src/main/java/org/purpurmc/purpur/PurpurConfig.java
+index 0bcbe1f07ff8e552d2abd6e432af5710005acc04..755ffc3dd690f274bbe40cbf9ebf4c0275fbc896 100644
+--- a/src/main/java/org/purpurmc/purpur/PurpurConfig.java
++++ b/src/main/java/org/purpurmc/purpur/PurpurConfig.java
+@@ -39,7 +39,7 @@ import java.util.Map;
+ import java.util.Set;
+ import java.util.logging.Level;
+ 
+-@SuppressWarnings("unused")
++
+ public class PurpurConfig {
+     private static final String HEADER = "This is the main configuration file for Purpur.\n"
+             + "As you can see, there's tons to configure. Some options may impact gameplay, so use\n"
+diff --git a/src/main/java/tinx/aquamarine/AquamarineBanID.java b/src/main/java/tinx/aquamarine/AquamarineBanID.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..cb82fd737e2f37f115693b0effba3f50dc358012
+--- /dev/null
++++ b/src/main/java/tinx/aquamarine/AquamarineBanID.java
+@@ -0,0 +1,19 @@
++package tinx.aquamarine;
++
++public class AquamarineBanID {
++    public AquamarineBanID(int ID, int years, int months, int days, int hours, int minutes, int seconds, String reason) {
++        this.ID = ID;
++        this.years = years;
++        this.months = months;
++        this.days = days;
++        this.hours = hours;
++        this.minutes = minutes;
++        this.seconds = seconds;
++        this.reason = reason;
++    }
++
++    public int ID;
++    public int years, months, days, hours, minutes, seconds;
++    public String reason = "You have been banned for breaking the rules.";
++}
++
+diff --git a/src/main/java/tinx/aquamarine/AquamarineUtils.java b/src/main/java/tinx/aquamarine/AquamarineUtils.java
+index 65f2db71345b8321190cded22595e0f5e5c8bb2d..e90faa75d2c7bd3e6f5539370c8ac74981f486d9 100644
+--- a/src/main/java/tinx/aquamarine/AquamarineUtils.java
++++ b/src/main/java/tinx/aquamarine/AquamarineUtils.java
+@@ -4,6 +4,25 @@ public class AquamarineUtils {
+     public static final String EULA_TEXT =  "#This EULA has been modified by Aquamarine to be true\n" +
+                                             "eula=true";
+ 
+-    public void test(){
++    public static AquamarineBanID[] banIDList = {
++            new AquamarineBanID(1,0, 0, 0, 0, 0, 15, "You have been banned for 15 seconds for breaking the rules."),
++            new AquamarineBanID(2,0, 0, 2, 0, 0, 0, "You have been banned for 2 days for breaking the rules."),
++            new AquamarineBanID(3,0, 0, 5, 0, 0, 0, "You have been banned for 5 days for breaking the rules."),
++            new AquamarineBanID(4,0, 0, 10, 0, 0, 0, "You have been banned for 10 days for breaking the rules."),
++            new AquamarineBanID(5,0, 0, 20, 0, 0, 0, "You have been banned for 20 days for breaking the rules."),
++            new AquamarineBanID(6,0, 1, 0, 0, 0, 0, "You have been banned for 1 month for breaking the rules."),
++            new AquamarineBanID(7,0, 2, 0, 0, 0, 0, "You have been banned for 2 months for breaking the rules."),
++            new AquamarineBanID(8,1, 0, 0, 0, 0, 0, "You have been banned for 1 year for breaking the rules.")
++    };
++
++    public static AquamarineBanID getBanID(int ID) {
++        for (AquamarineBanID banID : banIDList) {
++            {
++                if (banID.ID == ID) {
++                    return banIDList[ID - 1];
++                }
++            }
++        }
++        return banIDList[0];
+     }
+ }
+diff --git a/src/main/java/tinx/aquamarine/commands/BanIDCommand.java b/src/main/java/tinx/aquamarine/commands/BanIDCommand.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..61e851a882c99ea81d38422a6a5e5fc34408569b
+--- /dev/null
++++ b/src/main/java/tinx/aquamarine/commands/BanIDCommand.java
+@@ -0,0 +1,27 @@
++package tinx.aquamarine.commands;
++
++import com.mojang.brigadier.CommandDispatcher;
++import com.mojang.brigadier.builder.LiteralArgumentBuilder;
++import net.minecraft.commands.CommandSourceStack;
++import net.minecraft.network.chat.ChatType;
++import net.minecraft.server.commands.TimeCommand;
++import net.minecraft.server.level.ServerPlayer;
++import net.minecraft.world.entity.player.Player;
++
++public class BanIDCommand {
++    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
++        final ServerPlayer[] p = new ServerPlayer[1];
++
++        dispatcher.register(net.minecraft.commands.Commands.literal("banid").requires((commandlistenerwrapper) -> {
++           p[0] = commandlistenerwrapper.getPlayer();
++           return commandlistenerwrapper.hasPermission(3);
++        }).then(net.minecraft.commands.Commands.literal("get").executes((commandcontext) -> {
++            p[0].sendActionBarMessage("a");
++        return BanIDCommand.test();
++        })));
++    }
++
++    public static int test(){
++        return  0;
++    }
++}
